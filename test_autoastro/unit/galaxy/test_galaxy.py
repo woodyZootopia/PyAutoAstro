@@ -6,6 +6,7 @@ import autoarray as aa
 import autoastro as am
 from autoastro import exc
 from test_autoastro.mock import mock_cosmology
+from astropy import cosmology as cosmo
 
 
 class TestLightProfiles(object):
@@ -1541,6 +1542,86 @@ class TestMassProfiles(object):
             assert sum(caustic_radial_from_tangential_eigen_values) == pytest.approx(
                 sum(caustic_radial_from_magnification), 5e-1
             )
+
+    class TestRadiusandMassfromTangentialCriticalCurve(object):
+
+        def test__tangential_critical_curve_area_from_critical_curve_and_calc__two_sis_profiles(self):
+            mass_profile_1 = am.mp.SphericalIsothermal(
+                centre=(0.0, 0.0), einstein_radius=1.0
+            )
+            mass_profile_2 = am.mp.SphericalIsothermal(
+                centre=(0.0, 0.0), einstein_radius=1.0
+            )
+
+            galaxy = am.Galaxy(mass_1=mass_profile_1, mass_2=mass_profile_2, redshift=1)
+
+            grid = aa.grid.uniform(
+                shape_2d=(20, 20), pixel_scales=0.25, sub_size=2
+            )
+
+            area_crit = galaxy.area_within_tangential_critical_curve(grid=grid)
+
+            area_calc = np.pi * 2**2
+
+            assert area_crit == pytest.approx(area_calc, 1e-3)
+
+            grid = aa.grid.uniform(
+                shape_2d=(20, 20), pixel_scales=0.25, sub_size=4
+            )
+
+            area_crit = galaxy.area_within_tangential_critical_curve(grid=grid)
+
+            assert area_crit == pytest.approx(area_calc, 1e-3)
+
+        def test__einstein_radius_from_tangential_critical_curve__two_sis_profiles(self):
+            mass_profile_1 = am.mp.SphericalIsothermal(
+                centre=(0.0, 0.0), einstein_radius=1.0
+            )
+            mass_profile_2 = am.mp.SphericalIsothermal(
+                centre=(0.0, 0.0), einstein_radius=1.0
+            )
+
+            galaxy = am.Galaxy(mass_1=mass_profile_1, mass_2=mass_profile_2, redshift=1)
+
+            grid = aa.grid.uniform(
+                shape_2d=(20, 20), pixel_scales=0.25, sub_size=2
+            )
+
+            radius_crit = galaxy.einstein_radius_from_tangential_critical_curve(grid=grid)
+
+            assert radius_crit == pytest.approx(2, 1e-3)
+
+            grid = aa.grid.uniform(
+                shape_2d=(20, 20), pixel_scales=0.25, sub_size=4
+            )
+
+            radius_crit = galaxy.einstein_radius_from_tangential_critical_curve(grid=grid)
+
+            assert radius_crit == pytest.approx(2, 1e-3)
+
+        def test__einstein_mass_from_tangential_critical_curve_and_kappa__two_sis_profiles(self):
+            mass_profile_1 = am.mp.SphericalIsothermal(
+                centre=(0.0, 0.0), einstein_radius=1.0
+            )
+            mass_profile_2 = am.mp.SphericalIsothermal(
+                centre=(0.0, 0.0), einstein_radius=1.0
+            )
+
+            galaxy = am.Galaxy(mass_1=mass_profile_1, mass_2=mass_profile_2, redshift=1)
+
+            grid = aa.grid.uniform(
+                shape_2d=(50, 50), pixel_scales=0.25, sub_size=2
+            )
+
+            mass_kappa = galaxy.einstein_mass_in_units(
+                unit_mass='angular', redshift_source=2
+            )
+
+            mass_crit = galaxy.einstein_mass_from_tangential_critical_curve(
+                grid=grid, unit_mass='angular', redshift_source=2
+            ) 
+
+            assert mass_crit == pytest.approx(mass_kappa, 1e-3)
 
 
 class TestMassAndLightProfiles(object):

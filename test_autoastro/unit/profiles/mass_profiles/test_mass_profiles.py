@@ -4,6 +4,7 @@ import math
 from skimage import measure
 import numpy as np
 import pytest
+from astropy import cosmology as cosmo
 
 from test_autoastro.mock import mock_cosmology
 
@@ -1452,6 +1453,126 @@ class TestCriticalCurvesAndCaustics(object):
         assert sum(caustic_radial_from_eigen_values) == pytest.approx(
             sum(caustic_radial_from_magnification), 5e-1
         )
+
+
+class TestRadiusandMassfromTangentialCriticalCurve(object):
+    def test__tangential_critical_curve_area_from_critical_curve_and_calculation__spherical_isothermal(self):
+
+        sis = am.mp.SphericalIsothermal(
+            centre=(0.0, 0.0), einstein_radius=2.0
+        )
+
+        grid = aa.grid.uniform(
+            shape_2d=(20, 20), pixel_scales=0.25, sub_size=2
+        )
+
+        area_crit = sis.area_within_tangential_critical_curve(grid=grid)
+
+        area_calc = np.pi * sis.einstein_radius**2
+
+        assert area_crit == pytest.approx(area_calc, 1e-3)
+
+        grid = aa.grid.uniform(
+            shape_2d=(20, 20), pixel_scales=0.25, sub_size=4
+        )
+
+        area_crit = sis.area_within_tangential_critical_curve(grid=grid)
+
+        area_calc = np.pi * sis.einstein_radius ** 2
+
+        assert area_crit == pytest.approx(area_calc, 1e-3)
+
+    def test__einstein_radius_from_tangential_critical_curve__spherical_isothermal(self):
+
+        sis = am.mp.SphericalIsothermal(
+            centre=(0.0, 0.0), einstein_radius=2.0
+        )
+
+        grid = aa.grid.uniform(
+            shape_2d=(20, 20), pixel_scales=0.25, sub_size=2
+        )
+
+        radius_crit = sis.einstein_radius_from_tangential_critical_curve(grid=grid)
+
+        assert radius_crit == pytest.approx(sis.einstein_radius_in_units(unit_length='arcsec'), 1e-3)
+
+        grid = aa.grid.uniform(
+            shape_2d=(20, 20), pixel_scales=0.25, sub_size=4
+        )
+
+        radius_crit = sis.einstein_radius_from_tangential_critical_curve(grid=grid)
+
+        assert radius_crit == pytest.approx(sis.einstein_radius_in_units(unit_length='arcsec'), 1e-3)
+
+    def test__compare_einstein_radius_from_tangential_critical_curve_and_rescaled__sie(self):
+
+        sie = am.mp.EllipticalIsothermal(
+            centre=(0.0, 0.0), einstein_radius=2.0, axis_ratio=0.6
+        )
+
+        grid = aa.grid.uniform(
+            shape_2d=(50, 50), pixel_scales=0.25, sub_size=2
+        )
+
+        radius_crit = sie.einstein_radius_from_tangential_critical_curve(grid=grid)
+
+        radius_rescaled = sie.einstein_radius_in_units(unit_length='arcsec')\
+                          *((2*np.sqrt(sie.axis_ratio))/(1+sie.axis_ratio))
+
+        assert radius_crit == pytest.approx(radius_rescaled, 1e-3)
+
+        grid = aa.grid.uniform(
+            shape_2d=(50, 50), pixel_scales=0.25, sub_size=4
+        )
+
+        radius_crit = sie.einstein_radius_from_tangential_critical_curve(grid=grid)
+
+        radius_rescaled = sie.einstein_radius_in_units(unit_length='arcsec') \
+                          * ((2 * np.sqrt(sie.axis_ratio)) / (1 + sie.axis_ratio))
+
+        assert radius_crit == pytest.approx(radius_rescaled, 1e-3)
+
+    def test__einstein_mass_from_tangential_critical_curve_and_kappa__spherical_isothermal(self):
+
+        sis = am.mp.SphericalIsothermal(
+            centre=(0.0, 0.0), einstein_radius=2.0
+        )
+
+        grid = aa.grid.uniform(
+            shape_2d=(20, 20), pixel_scales=0.25, sub_size=2
+        )
+
+        mass_crit = sis.einstein_mass_from_tangential_critical_curve(
+            grid=grid, redshift_profile=1, redshift_source=2, unit_mass='solMass')
+
+        mass_kappa = sis.einstein_mass_in_units(redshift_profile=1, redshift_source=2, unit_mass='solMass')
+
+        assert mass_crit == pytest.approx(mass_kappa, 1e-3)
+
+    def test__einstein_mass_from_tangential_critical_curve_and_radius_rescaled_calc__sie(self):
+
+        sie = am.mp.EllipticalIsothermal(
+            centre=(0.0, 0.0), einstein_radius=2.0, axis_ratio=0.6
+        )
+
+        grid = aa.grid.uniform(
+            shape_2d=(50, 50), pixel_scales=0.25, sub_size=2
+        )
+
+        mass_crit = sie.einstein_mass_from_tangential_critical_curve(
+            grid=grid, redshift_profile=1, redshift_source=2, unit_mass='solMass', cosmology=cosmo.Planck15
+        )
+
+        radius_rescaled = sie.einstein_radius_in_units(unit_length='arcsec') \
+                          * ((2 * np.sqrt(sie.axis_ratio)) / (1 + sie.axis_ratio))
+
+        sigma_crit = am.util.cosmo.critical_surface_density_between_redshifts_from_redshifts_and_cosmology(
+            redshift_0=1,  redshift_1=2, unit_length='arcsec', unit_mass='solMass', cosmology=cosmo.Planck15
+        )
+
+        mass_calc = np.pi * radius_rescaled**2 * sigma_crit
+
+        assert mass_crit == pytest.approx(mass_calc, 1e-3)
 
 
 class TestGridsBinning:

@@ -10,6 +10,8 @@ from autofit.tools import text_util
 from autoarray.operators.inversion import pixelizations as pix
 from autoastro.profiles import light_profiles as lp
 from autoastro.profiles import mass_profiles as mp
+from autoastro import util
+
 
 
 def is_light_profile(obj):
@@ -534,6 +536,39 @@ class Galaxy(ModelObject):
             self.tangential_caustic_from_grid(grid=grid),
             self.radial_caustic_from_grid(grid=grid),
         ]
+
+    def area_within_tangential_critical_curve(self, grid):
+
+        critical_curve = self.critical_curves_from_grid(grid=grid)[0]
+        x, y = critical_curve[:, 0], critical_curve[:, 1]
+
+        return np.abs(0.5 * np.sum(y[:-1] * np.diff(x) - x[:-1] * np.diff(y)))
+
+    ## einstein radius is given in arcseconds/ whatever units critical curve grid is in
+    def einstein_radius_from_tangential_critical_curve(self, grid):
+
+        area = self.area_within_tangential_critical_curve(grid=grid)
+
+        return np.sqrt(area/np.pi)
+
+    def einstein_mass_from_tangential_critical_curve(
+            self,
+            grid,
+            redshift_source=None,
+            cosmology=cosmo.Planck15,
+            unit_mass='solMass'):
+
+        radius = self.einstein_radius_from_tangential_critical_curve(grid=grid)
+
+        sigma_crit = util.cosmo.critical_surface_density_between_redshifts_from_redshifts_and_cosmology(
+            redshift_0=self.redshift,
+            redshift_1=redshift_source,
+            cosmology=cosmology,
+            unit_length='arcsec',
+            unit_mass=unit_mass)
+
+        return sigma_crit * np.pi * (radius ** 2)
+
 
     def mass_within_circle_in_units(
         self,
