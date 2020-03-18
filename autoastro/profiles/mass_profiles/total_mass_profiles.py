@@ -239,6 +239,54 @@ class SphericalBrokenPowerLaw(EllipticalBrokenPowerLaw):
             break_radius=break_radius,
         )
 
+class StringMatter(geometry_profiles.StringProfile, mp.MassProfile):
+    @af.map_types
+    def __init__(
+        self,
+        centre: dim.Position = (0.0, 0.0),
+        grad_x: float = 1.0,
+        grad_y: float = 1.0,
+        deflection_intensity : dim.Length = 1.0,
+        core_radius: dim.Length = 0.1,
+    ):
+        """
+        Represents a string-shaped mass.
+        The string can be written as
+        `grad_x` * (x-centre[1]) + `grad_y` * (y-centre[0]) = 0.
+
+        Parameters
+        ----------
+        grad_x, grad_y: float
+            Explained as above.
+
+        deflection_intensity: dim.Length
+            The coefficient used to decide the deflection.
+
+        core_radius: dim.Length
+            If grid is nearer than this value, this value is used replacing `distance_from_line`.
+
+        """
+        super(StringMatter, self).__init__(
+            centre=centre, grad_x=grad_x, grad_y=grad_y, core_radius=core_radius
+        )
+        self.deflection_intensity = deflection_intensity
+
+    @grids.convert_coordinates_to_grid
+    @geometry_profiles.transform_grid
+    @geometry_profiles.move_grid_to_radial_minimum
+    def deflections_from_grid(self, grid):
+        distance_from_string = self.grid_to_distance_from_string(grid=grid)
+        # Copied from the deflection of PointMass. May well be different from reality
+        return self.deflection_vector(grid=grid, distance_to_deflect=self.deflection_intensity ** 2 / distance_from_string)
+
+    @grids.convert_coordinates_to_grid
+    @geometry_profiles.transform_grid
+    @geometry_profiles.move_grid_to_radial_minimum
+    def convergence_from_grid(self, grid):
+        # Copied from the deflection of PointMass. May well be different from reality
+        convergence_grid = np.zeros(shape=grid.sub_shape_1d)
+        return convergence_grid
+
 
 class EllipticalCoredPowerLaw(mp.EllipticalMassProfile, mp.MassProfile):
     @af.map_types

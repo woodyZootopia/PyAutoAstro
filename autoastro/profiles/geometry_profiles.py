@@ -249,6 +249,56 @@ class SphericalProfile(GeometryProfile):
         transformed = np.add(grid, self.centre)
         return transformed.view(TransformedGrid)
 
+class StringProfile(SphericalProfile):
+    @af.map_types
+    def __init__(
+        self,
+        centre: dim.Position = (0.0, 0.0),
+        grad_x: float = 1.0,
+        grad_y: float = 1.0,
+        core_radius: float = 0.01,
+    ):
+        super(StringProfile, self).__init__(centre=centre)
+        self.grad_x = grad_x
+        self.grad_y = grad_y
+        self.core_radius = core_radius
+
+    @grids.convert_coordinates_to_grid
+    #  @transform_grid
+    def grid_to_distance_from_string(self, grid):
+        """
+        Convert a grid of (y, x) coordinates to a grid of their distance from the string matter.
+        If the coordinates have not been transformed to the profile's centre, this is performed automatically.
+
+        NOTE: This function actually just returns the value of `g_x*x+g_y*y`, which can be negative.
+        By doing this, grids are deflected towards the string, no matter which side of the string the grid exists.
+
+        Parameters
+        ----------
+        grid : TransformedGrid(ndarray)
+            The (y, x) coordinates in the reference frame of the profile.
+        """
+        distance = np.divide(
+                        self.grad_x * grid[:, 0] + self.grad_y * grid[:, 1],
+                        np.sqrt(self.grad_x**2 + self.grad_y**2)
+                    )
+        return np.where(np.abs(distance)<self.core_radius, self.core_radius, distance)
+
+    def deflection_vector(self, grid, distance_to_deflect):
+        """
+        Convert a grid of (y,x) coordinates with their specified distance to deflect to their original (y,x) Cartesian coordinates.
+
+        Parameters
+        ----------
+        grid : TransformedGrid(ndarray)
+            The (y, x) coordinates in the reference frame of the profile.
+        distance_to_deflect : ndarray
+            The distance to deflect each grid.
+        """
+        grad_sum_squared = np.sqrt(self.grad_x**2+self.grad_y**2)
+        cos_theta, sin_theta = self.grad_y/grad_sum_squared, self.grad_x/grad_sum_squared
+        return np.outer(distance_to_deflect, (sin_theta, cos_theta))
+
 
 class EllipticalProfile(SphericalProfile):
     @af.map_types
